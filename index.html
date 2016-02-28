@@ -21,19 +21,41 @@
         width: 100%;
         display: table;
       }
+
+      /* ===== Power button ============================================
+       */
       .power {
         position: absolute;
         top: 0;
         right: 0;
+        font-size: 2em;
+        background: transparent;
+        border: none;
+        transition: 250ms ease color;
+      }
+      .power:hover {
+        color: white;
+      }
+
+      #hostname {
+        position: absolute;
+        top: 0.25em;
+        left: 0.25em;
+        margin: 0;
       }
 
       #input_table {
         display: table-cell;
         vertical-align: middle;
         text-align: center;
+        opacity: 0;
+        transition: 500ms cubic-bezier(.47,0,.74,.71) opacity;
+      }
+      #input_table.active {
+        opacity: 1;
       }
 
-      .entry {
+      .input {
         outline: 0 none;
         border: none;
         border-radius: 0.25em;
@@ -97,8 +119,8 @@
       }
 
       /*
-      * autologin_timer_expired callback.
-      */
+       * autologin_timer_expired callback.
+       */
       function autologin_timer_expired(username) {
         /* Stub.  Does nothing. */
       }
@@ -108,8 +130,8 @@
       /*********************************************************************/
 
       /*
-      * clear_messages
-      */
+       * clear_messages
+       */
       function clear_messages() {
         messages = document.getElementById("messages");
         messages.innerHTML = "";
@@ -117,35 +139,61 @@
       }
 
       /*
-      * Kickoff the authentication process
-      */
+       * Kickoff the authentication process
+       */
       function start_authentication() {
         clear_messages();
         lightdm.authenticate();   // start with null userid, have pam prompt for userid.
+        setTimeout(function() {
+          // fade in input fields
+          document.getElementById('input_table')
+            .setAttribute('class', 'active');
+          // set hostname
+          document.getElementById('hostname').innerHTML = lightdm.hostname;
+        },250);
       }
 
       /*
-      * handle the input from the entry field.
-      */
+       * handle the input from the entry field.
+       */
       function handle_input() {
         entry = document.getElementById("entry");
         lightdm.respond(entry.value);
       }
+
+      /* ===== Mocked LightDM for debugging ============================
+       */
+      var mockedLightDM = {
+        "authenticate": function() {
+          console.log('lightdm.authenticate');
+          show_prompt('login', 'text');
+        },
+        "respond": function(inputText) {
+          console.log('lightdm.respond', inputText);
+          show_prompt('password', 'password');
+        },
+        "shutdown": function() {
+          console.log('lightdm.shutdown');
+        },
+        "hostname": 'archlinux'
+      }
+      // Initialize a mocked LightDM or the real one.
+      window.lightdm = window.lightdm || mockedLightDM;
     </script>
   </head>
   <body>
-    <img class=power onclick="javascript:lightdm.shutdown();" src="power_button.png">
+    <button class=power onclick="javascript:lightdm.shutdown();">🔌</button>
 
-    <div class=topBox></div>
+    <p id=hostname></p>
 
     <div id=input_table>
       <form action="javascript: handle_input()">
         <label id=prompt for=entry></label>
-        <input class=entry id=entry>
+        <input class=input id=entry>
       </form>
     </div>
 
-    <div class=messageBox id=messages></div>
+    <p class=messageBox id=messages></p>
 
     <script>
       start_authentication();
